@@ -1,95 +1,132 @@
-import { useRef, useEffect } from 'react';
-import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { Sphere, useTexture, Stars, PerspectiveCamera } from '@react-three/drei';
+import React, { useRef, useMemo } from 'react';
+import { useFrame, useLoader } from '@react-three/fiber';
+import { TextureLoader } from 'three';
 import * as THREE from 'three';
 
-const EarthMesh = () => {
-  const earthRef = useRef<THREE.Mesh>(null);
-  const cloudsRef = useRef<THREE.Mesh>(null);
-  
-  // Load Earth textures
-  const [colorMap, normalMap, specularMap, cloudsMap] = useTexture([
-    'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=2048&q=80', // Earth surface
-    'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=2048&q=80', // Normal map placeholder
-    'https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=2048&q=80', // Specular map placeholder
-    'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=2048&q=80', // Clouds
+interface DisasterPoint {
+  position: [number, number, number];
+  type: 'flood' | 'fire' | 'earthquake' | 'storm';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
+
+interface Earth3DProps {
+  disasterPoints?: DisasterPoint[];
+  autoRotate?: boolean;
+}
+
+const Earth3D: React.FC<Earth3DProps> = ({ disasterPoints = [], autoRotate = true }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const pointsRef = useRef<THREE.Group>(null);
+
+  // Load earth textures
+  const [colorMap, normalMap, specularMap] = useLoader(TextureLoader, [
+    'https://unpkg.com/three-globe@2.31.1/example/img/earth-day.jpg',
+    'https://unpkg.com/three-globe@2.31.1/example/img/earth-topology.png',
+    'https://unpkg.com/three-globe@2.31.1/example/img/earth-water.png',
   ]);
 
-  useFrame((state) => {
-    if (earthRef.current) {
-      earthRef.current.rotation.y += 0.002;
+  // Animation
+  useFrame((state, delta) => {
+    if (meshRef.current && autoRotate) {
+      meshRef.current.rotation.y += delta * 0.1;
     }
-    if (cloudsRef.current) {
-      cloudsRef.current.rotation.y += 0.003;
+    if (pointsRef.current) {
+      pointsRef.current.rotation.y += delta * 0.1;
     }
   });
 
+  // Convert lat/lng to 3D coordinates
+  const latLngTo3D = (lat: number, lng: number, radius = 2.02) => {
+    const phi = (90 - lat) * (Math.PI / 180);
+    const theta = (lng + 180) * (Math.PI / 180);
+    
+    const x = -(radius * Math.sin(phi) * Math.cos(theta));
+    const z = radius * Math.sin(phi) * Math.sin(theta);
+    const y = radius * Math.cos(phi);
+    
+    return [x, y, z] as [number, number, number];
+  };
+
+  // Sample disaster points (you can replace with real data)
+  const sampleDisasterPoints: DisasterPoint[] = [
+    { position: latLngTo3D(40.7128, -74.0060), type: 'flood', severity: 'high' }, // New York
+    { position: latLngTo3D(34.0522, -118.2437), type: 'fire', severity: 'critical' }, // Los Angeles
+    { position: latLngTo3D(35.6762, 139.6503), type: 'earthquake', severity: 'medium' }, // Tokyo
+    { position: latLngTo3D(-33.8688, 151.2093), type: 'storm', severity: 'low' }, // Sydney
+  ];
+
+  const activePoints = disasterPoints.length > 0 ? disasterPoints : sampleDisasterPoints;
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return '#ff0000';
+      case 'high': return '#ff6600';
+      case 'medium': return '#ffaa00';
+      case 'low': return '#ffff00';
+      default: return '#ffffff';
+    }
+  };
+
   return (
     <group>
-      {/* Earth sphere */}
-      <Sphere ref={earthRef} args={[2.5, 64, 64]} position={[0, 0, 0]}>
+      {/* Earth */}
+      <mesh ref={meshRef}>
+        <sphereGeometry args={[2, 64, 64]} />
         <meshPhongMaterial
           map={colorMap}
           normalMap={normalMap}
           specularMap={specularMap}
           shininess={100}
-          transparent
-          opacity={0.95}
         />
-      </Sphere>
-      
-      {/* Clouds */}
-      <Sphere ref={cloudsRef} args={[2.52, 64, 64]} position={[0, 0, 0]}>
-        <meshPhongMaterial
-          map={cloudsMap}
-          transparent
-          opacity={0.3}
-          depthWrite={false}
-        />
-      </Sphere>
-      
-      {/* Atmosphere glow */}
-      <Sphere args={[2.6, 64, 64]} position={[0, 0, 0]}>
+      </mesh>
+
+      {/* Atmospheric glow */}
+      <mesh scale={[2.1, 2.1, 2.1]}>
+        <sphereGeometry args={[2, 64, 64]} />
         <meshBasicMaterial
-          color="#00aaff"
+          color="#4dd0e1"
           transparent
-          opacity={0.1}
+          opacity={0.15}
           side={THREE.BackSide}
         />
-      </Sphere>
-    </group>
-  );
-};
+      </mesh>
 
-const Earth3D = () => {
-  return (
-    <div className="w-full h-full">
-      <Canvas>
-        <PerspectiveCamera makeDefault position={[0, 0, 8]} />
-        
-        {/* Lighting */}
-        <ambientLight intensity={0.3} />
-        <directionalLight
-          position={[5, 3, 5]}
-          intensity={1}
-          color="#ffffff"
-        />
-        <pointLight position={[-5, -3, -5]} intensity={0.5} color="#00aaff" />
-        
-        {/* Stars background */}
-        <Stars
-          radius={300}
-          depth={60}
-          count={20000}
-          factor={7}
-          saturation={0}
-          fade
-        />
-        
-        {/* Earth */}
-        <EarthMesh />
-      </Canvas>
-    </div>
+      {/* Disaster points */}
+      <group ref={pointsRef}>
+        {activePoints.map((point, index) => (
+          <group key={index} position={point.position}>
+            {/* Pulsing marker */}
+            <mesh>
+              <sphereGeometry args={[0.05, 16, 16]} />
+              <meshBasicMaterial 
+                color={getSeverityColor(point.severity)}
+                transparent
+                opacity={0.8}
+              />
+            </mesh>
+            
+            {/* Ripple effect */}
+            <mesh>
+              <ringGeometry args={[0.1, 0.15, 16]} />
+              <meshBasicMaterial
+                color={getSeverityColor(point.severity)}
+                transparent
+                opacity={0.4}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* Lighting */}
+      <directionalLight 
+        position={[5, 3, 5]} 
+        intensity={1} 
+        color="#ffffff"
+      />
+      <ambientLight intensity={0.3} />
+    </group>
   );
 };
 

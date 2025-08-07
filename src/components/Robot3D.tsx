@@ -1,95 +1,172 @@
-import { useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Box, Sphere, Cylinder, PerspectiveCamera } from '@react-three/drei';
+import React, { useRef, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { Text, Box, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
+import { gsap } from 'gsap';
 
-const RobotMesh = () => {
-  const robotRef = useRef<THREE.Group>(null);
+interface Robot3DProps {
+  onInteraction?: () => void;
+  animated?: boolean;
+}
+
+const Robot3D: React.FC<Robot3DProps> = ({ onInteraction, animated = true }) => {
+  const groupRef = useRef<THREE.Group>(null);
   const headRef = useRef<THREE.Mesh>(null);
-  const eyeLeftRef = useRef<THREE.Mesh>(null);
-  const eyeRightRef = useRef<THREE.Mesh>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isWaving, setIsWaving] = useState(false);
 
-  useFrame((state) => {
-    if (robotRef.current) {
-      robotRef.current.rotation.y = Math.sin(state.clock.elapsedTime) * 0.2;
-      robotRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.1;
-    }
-    if (headRef.current) {
-      headRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
-    }
-    if (eyeLeftRef.current && eyeRightRef.current) {
-      const glowIntensity = 0.5 + Math.sin(state.clock.elapsedTime * 3) * 0.5;
-      (eyeLeftRef.current.material as THREE.MeshBasicMaterial).opacity = glowIntensity;
-      (eyeRightRef.current.material as THREE.MeshBasicMaterial).opacity = glowIntensity;
+  // Animation
+  useFrame((state, delta) => {
+    if (groupRef.current && animated) {
+      // Floating animation
+      groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.1;
+      
+      // Head look around
+      if (headRef.current) {
+        headRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.3;
+      }
     }
   });
 
-  return (
-    <group ref={robotRef} position={[0, -1, 0]}>
-      {/* Body */}
-      <Box args={[1.2, 1.8, 0.8]} position={[0, 0, 0]}>
-        <meshStandardMaterial color="#2a3441" metalness={0.8} roughness={0.2} />
-      </Box>
-      
-      {/* Head */}
-      <Box ref={headRef} args={[1, 1, 1]} position={[0, 1.4, 0]}>
-        <meshStandardMaterial color="#34495e" metalness={0.7} roughness={0.3} />
-      </Box>
-      
-      {/* Eyes */}
-      <Sphere ref={eyeLeftRef} args={[0.1]} position={[-0.25, 1.5, 0.45]}>
-        <meshBasicMaterial color="#00aaff" transparent />
-      </Sphere>
-      <Sphere ref={eyeRightRef} args={[0.1]} position={[0.25, 1.5, 0.45]}>
-        <meshBasicMaterial color="#00aaff" transparent />
-      </Sphere>
-      
-      {/* Arms */}
-      <Cylinder args={[0.15, 0.15, 1.5]} position={[-0.8, 0, 0]} rotation={[0, 0, Math.PI / 6]}>
-        <meshStandardMaterial color="#2a3441" metalness={0.8} roughness={0.2} />
-      </Cylinder>
-      <Cylinder args={[0.15, 0.15, 1.5]} position={[0.8, 0, 0]} rotation={[0, 0, -Math.PI / 6]}>
-        <meshStandardMaterial color="#2a3441" metalness={0.8} roughness={0.2} />
-      </Cylinder>
-      
-      {/* Legs */}
-      <Cylinder args={[0.2, 0.2, 1.5]} position={[-0.3, -1.5, 0]}>
-        <meshStandardMaterial color="#34495e" metalness={0.7} roughness={0.3} />
-      </Cylinder>
-      <Cylinder args={[0.2, 0.2, 1.5]} position={[0.3, -1.5, 0]}>
-        <meshStandardMaterial color="#34495e" metalness={0.7} roughness={0.3} />
-      </Cylinder>
-      
-      {/* Antenna */}
-      <Cylinder args={[0.02, 0.02, 0.5]} position={[0, 2.2, 0]}>
-        <meshStandardMaterial color="#00aaff" emissive="#004466" />
-      </Cylinder>
-      <Sphere args={[0.05]} position={[0, 2.5, 0]}>
-        <meshBasicMaterial color="#00aaff" />
-      </Sphere>
-    </group>
-  );
-};
+  const handleClick = () => {
+    if (onInteraction) {
+      onInteraction();
+    }
+    
+    // Wave animation
+    setIsWaving(true);
+    if (groupRef.current) {
+      gsap.to(groupRef.current.rotation, {
+        z: 0.3,
+        duration: 0.3,
+        yoyo: true,
+        repeat: 3,
+        onComplete: () => setIsWaving(false)
+      });
+    }
+  };
 
-const Robot3D = () => {
   return (
-    <div className="w-full h-full">
-      <Canvas>
-        <PerspectiveCamera makeDefault position={[0, 0, 6]} />
-        
-        {/* Lighting */}
-        <ambientLight intensity={0.4} />
-        <directionalLight
-          position={[2, 4, 2]}
-          intensity={1}
-          color="#ffffff"
+    <group 
+      ref={groupRef}
+      onClick={handleClick}
+      onPointerEnter={() => setIsHovered(true)}
+      onPointerLeave={() => setIsHovered(false)}
+      scale={isHovered ? 1.1 : 1}
+    >
+      {/* Robot Body */}
+      <Box
+        args={[0.8, 1.2, 0.6]}
+        position={[0, 0, 0]}
+      >
+        <meshStandardMaterial 
+          color={isHovered ? "#4f46e5" : "#6366f1"}
+          metalness={0.7}
+          roughness={0.3}
         />
-        <pointLight position={[0, 2, 4]} intensity={0.8} color="#00aaff" />
-        
-        {/* Robot */}
-        <RobotMesh />
-      </Canvas>
-    </div>
+      </Box>
+
+      {/* Robot Head */}
+      <Box
+        ref={headRef}
+        args={[0.6, 0.6, 0.6]}
+        position={[0, 0.9, 0]}
+      >
+        <meshStandardMaterial 
+          color={isHovered ? "#3730a3" : "#4338ca"}
+          metalness={0.8}
+          roughness={0.2}
+        />
+      </Box>
+
+      {/* Eyes */}
+      <Sphere
+        args={[0.08]}
+        position={[-0.15, 0.95, 0.25]}
+      >
+        <meshEmissiveMaterial 
+          color={isWaving ? "#00ff00" : "#00ffff"}
+          emissive={isWaving ? "#00ff00" : "#00ffff"}
+          emissiveIntensity={0.5}
+        />
+      </Sphere>
+      <Sphere
+        args={[0.08]}
+        position={[0.15, 0.95, 0.25]}
+      >
+        <meshEmissiveMaterial 
+          color={isWaving ? "#00ff00" : "#00ffff"}
+          emissive={isWaving ? "#00ff00" : "#00ffff"}
+          emissiveIntensity={0.5}
+        />
+      </Sphere>
+
+      {/* Arms */}
+      <Box
+        args={[0.2, 0.8, 0.2]}
+        position={[-0.6, 0.2, 0]}
+        rotation={[0, 0, isWaving ? -0.5 : 0]}
+      >
+        <meshStandardMaterial 
+          color="#5b21b6"
+          metalness={0.6}
+          roughness={0.4}
+        />
+      </Box>
+      <Box
+        args={[0.2, 0.8, 0.2]}
+        position={[0.6, 0.2, 0]}
+        rotation={[0, 0, isWaving ? 0.5 : 0]}
+      >
+        <meshStandardMaterial 
+          color="#5b21b6"
+          metalness={0.6}
+          roughness={0.4}
+        />
+      </Box>
+
+      {/* Legs */}
+      <Box
+        args={[0.25, 1, 0.25]}
+        position={[-0.25, -1.1, 0]}
+      >
+        <meshStandardMaterial 
+          color="#6d28d9"
+          metalness={0.5}
+          roughness={0.5}
+        />
+      </Box>
+      <Box
+        args={[0.25, 1, 0.25]}
+        position={[0.25, -1.1, 0]}
+      >
+        <meshStandardMaterial 
+          color="#6d28d9"
+          metalness={0.5}
+          roughness={0.5}
+        />
+      </Box>
+
+      {/* Interactive Text */}
+      {isHovered && (
+        <Text
+          position={[0, 2, 0]}
+          fontSize={0.3}
+          color="#ffffff"
+          anchorX="center"
+          anchorY="middle"
+        >
+          Click to Sign In!
+        </Text>
+      )}
+
+      {/* Ambient lighting for the robot */}
+      <pointLight 
+        position={[0, 1, 1]} 
+        intensity={0.5} 
+        color="#4f46e5"
+      />
+    </group>
   );
 };
 
