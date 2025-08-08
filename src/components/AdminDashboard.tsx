@@ -26,8 +26,10 @@ import {
 import Earth3D from './Earth3D';
 // Chart dependencies temporarily removed - using simple visualizations
 
+import { User } from '@supabase/supabase-js';
+
 interface AdminDashboardProps {
-  user: any;
+  user: User;
   onSignOut: () => void;
 }
 

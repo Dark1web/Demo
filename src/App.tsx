@@ -9,16 +9,19 @@ import UserDashboard from '@/components/UserDashboard';
 import { Loader2 } from 'lucide-react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { User } from '@supabase/supabase-js';
 
 // Register GSAP plugins
 gsap.registerPlugin(ScrollTrigger);
 
-interface AppContentProps {}
+interface AppContentProps {
+  // Props interface - currently no props needed
+}
 
 const AppContent: React.FC<AppContentProps> = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pageTransition, setPageTransition] = useState(false);
   
@@ -54,7 +57,7 @@ const AppContent: React.FC<AppContentProps> = () => {
   }, [user, loading]);
 
   // Handle authentication success
-  const handleAuthSuccess = async (authUser: any, adminStatus: boolean) => {
+  const handleAuthSuccess = async (authUser: User, adminStatus: boolean) => {
     setPageTransition(true);
     
     // GSAP page transition animation

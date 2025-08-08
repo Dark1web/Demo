@@ -11,11 +11,12 @@ import { Loader2, Mail, Lock, User, Shield, Eye, EyeOff } from 'lucide-react';
 import { useSupabase } from '@/hooks/useSupabase';
 import { toast } from 'sonner';
 import { gsap } from 'gsap';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (user: any, isAdmin: boolean) => void;
+  onSuccess: (user: SupabaseUser, isAdmin: boolean) => void;
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {

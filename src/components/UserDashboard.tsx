@@ -27,8 +27,10 @@ import {
 } from 'lucide-react';
 // Map functionality temporarily removed for demo
 
+import { User } from '@supabase/supabase-js';
+
 interface UserDashboardProps {
-  user: any;
+  user: User;
   onSignOut: () => void;
 }
 
